@@ -1,78 +1,173 @@
-import React from 'react'
+import React, { useState } from 'react';
 
-// önerilen başlangıç stateleri
-const initialMessage = ''
-const initialEmail = ''
-const initialSteps = 0
-const initialIndex = 4 //  "B" nin bulunduğu indexi
+
+const initialMessage = '';
+const initialEmail = '';
+const initialSteps = 0;
+const initialIndex = 4; 
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AppFunctional(props) {
-  // AŞAĞIDAKİ HELPERLAR SADECE ÖNERİDİR.
-  // Bunları silip kendi mantığınızla sıfırdan geliştirebilirsiniz.
+  const [message, setMessage] = useState(initialMessage);
+  const [email, setEmail] = useState(initialEmail);
+  const [steps, setSteps] = useState(initialSteps);
+  const [index, setIndex] = useState(initialIndex);
 
   function getXY() {
-    // Koordinatları izlemek için bir state e sahip olmak gerekli değildir.
-    // Bunları hesaplayabilmek için "B" nin hangi indexte olduğunu bilmek yeterlidir.
+    const x = index % 3 + 1;
+    const y = Math.floor(index / 3) + 1;
+    return { x, y };
   }
 
   function getXYMesaj() {
-    // Kullanıcı için "Koordinatlar (2, 2)" mesajını izlemek için bir state'in olması gerekli değildir.
-    // Koordinatları almak için yukarıdaki "getXY" helperını ve ardından "getXYMesaj"ı kullanabilirsiniz.
-    // tamamen oluşturulmuş stringi döndürür.
+    const { x, y } = getXY();
+    return `Koordinatlar (${x}, ${y})`;
   }
 
   function reset() {
-    // Tüm stateleri başlangıç ​​değerlerine sıfırlamak için bu helperı kullanın.
+    setMessage(initialMessage);
+    setEmail(initialEmail);
+    setSteps(initialSteps);
+    setIndex(initialIndex);
   }
 
   function sonrakiIndex(yon) {
-    // Bu helper bir yön ("sol", "yukarı", vb.) alır ve "B" nin bir sonraki indeksinin ne olduğunu hesaplar.
-    // Gridin kenarına ulaşıldığında başka gidecek yer olmadığı için,
-    // şu anki indeksi değiştirmemeli.
+    let newIndex;
+  
+    if (yon === 'sol') {
+      newIndex = index % 3 === 0 ? index : index - 1;
+      if (index === newIndex) {
+        setMessage("You can't go left.");
+        return index; 
+      }
+    } else if (yon === 'yukarı') {
+      newIndex = index - 3 < 0 ? index : index - 3;
+      if (index === newIndex) {
+        setMessage("You can't go up.");
+        return index; 
+      }
+    } else if (yon === 'sağ') {
+      newIndex = index % 3 === 2 ? index : index + 1;
+      if (index === newIndex) {
+        setMessage("You can't go right.");
+        return index; 
+      }
+    } else if (yon === 'aşağı') {
+      newIndex = index + 3 > 8 ? index : index + 3;
+      if (index === newIndex) {
+        setMessage("You can't go down.");
+        return index; 
+      }
+    } else {
+      newIndex = index;
+    }
+  
+    return newIndex;
   }
 
-  function ilerle(evt) {
-    // Bu event handler, "B" için yeni bir dizin elde etmek üzere yukarıdaki yardımcıyı kullanabilir,
-    // ve buna göre state i değiştirir.
+  function isValidCoordinate(coord) {
+    return coord >= 1 && coord <= 3;
+  }
+
+  function isValidSteps(steps) {
+    return steps >= 0;
   }
 
   function onChange(evt) {
-    // inputun değerini güncellemek için bunu kullanabilirsiniz
+    setEmail(evt.target.value);
   }
 
-  function onSubmit(evt) {
-    // payloadu POST etmek için bir submit handlera da ihtiyacınız var.
+  async function onSubmit(evt) {
+    evt.preventDefault();
+
+    if (!email || !emailRegex.test(email)) {
+      setMessage('Geçerli bir e-posta girin.');
+      return;
+    }
+
+    if (
+      !isValidCoordinate(index % 3 + 1) ||
+      !isValidCoordinate(Math.floor(index / 3) + 1) ||
+      !isValidSteps(steps)
+    ) {
+      setMessage('Geçerli bilgileri girin.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:9000/api/result', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          x: index % 3 + 1,
+          y: Math.floor(index / 3) + 1,
+          steps,
+          email,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Sunucu hatası: ' + response.status);
+      }
+
+      const result = await response.json();
+      setMessage('Form başarıyla gönderildi.');
+    } catch (error) {
+      setMessage('Form gönderilirken bir hata oluştu.');
+    }
+  }
+
+  function ilerle(evt) {
+    const newDirection = evt.target.id;
+    const newIndex = sonrakiIndex(newDirection);
+  
+    if (index !== newIndex) {
+      setIndex((prevIndex) => newIndex);
+      setSteps((prevSteps) => prevSteps + 1);
+      setMessage('');
+    }
   }
 
   return (
     <div id="wrapper" className={props.className}>
       <div className="info">
-        <h3 id="coordinates">Koordinatlar (2, 2)</h3>
-        <h3 id="steps">0 kere ilerlediniz</h3>
+        <h3 id="coordinates">{getXYMesaj()}</h3>
+        <h3 id="steps">{`${steps} kere ilerlediniz`}</h3>
       </div>
       <div id="grid">
-        {
-          [0, 1, 2, 3, 4, 5, 6, 7, 8].map(idx => (
-            <div key={idx} className={`square${idx === 4 ? ' active' : ''}`}>
-              {idx === 4 ? 'B' : null}
-            </div>
-          ))
-        }
+        {Array.from({ length: 9 }, (_, idx) => (
+          <div key={idx} className={`square${idx === index ? ' active' : ''}`}>
+            {idx === index ? 'B' : null}
+          </div>
+        ))}
       </div>
       <div className="info">
-        <h3 id="message"></h3>
+        <h3 id="message">{message}</h3>
       </div>
       <div id="keypad">
-        <button id="left">SOL</button>
-        <button id="up">YUKARI</button>
-        <button id="right">SAĞ</button>
-        <button id="down">AŞAĞI</button>
-        <button id="reset">reset</button>
+        <button id="sol" onClick={ilerle}>
+          SOL
+        </button>
+        <button id="yukarı" onClick={ilerle}>
+          YUKARI
+        </button>
+        <button id="sağ" onClick={ilerle}>
+          SAĞ
+        </button>
+        <button id="aşağı" onClick={ilerle}>
+          AŞAĞI
+        </button>
+        <button id="reset" onClick={reset}>
+          reset
+        </button>
       </div>
-      <form>
-        <input id="email" type="email" placeholder="email girin"></input>
+      <form onSubmit={onSubmit}>
+        <input id="email" type="email" placeholder="Email girin" value={email} onChange={onChange}></input>
         <input id="submit" type="submit"></input>
       </form>
     </div>
-  )
+  );
 }
