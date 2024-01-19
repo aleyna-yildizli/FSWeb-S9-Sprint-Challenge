@@ -35,25 +35,25 @@ export default function AppFunctional(props) {
   function sonrakiIndex(yon) {
     let newIndex;
   
-    if (yon === 'sol') {
+    if (yon === 'left') {
       newIndex = index % 3 === 0 ? index : index - 1;
       if (index === newIndex) {
         setMessage("You can't go left.");
         return index; 
       }
-    } else if (yon === 'yukarı') {
+    } else if (yon === 'up') {
       newIndex = index - 3 < 0 ? index : index - 3;
       if (index === newIndex) {
         setMessage("You can't go up.");
         return index; 
       }
-    } else if (yon === 'sağ') {
+    } else if (yon === 'right') {
       newIndex = index % 3 === 2 ? index : index + 1;
       if (index === newIndex) {
         setMessage("You can't go right.");
         return index; 
       }
-    } else if (yon === 'aşağı') {
+    } else if (yon === 'down') {
       newIndex = index + 3 > 8 ? index : index + 3;
       if (index === newIndex) {
         setMessage("You can't go down.");
@@ -148,20 +148,20 @@ export default function AppFunctional(props) {
         <h3 id="message">{message}</h3>
       </div>
       <div id="keypad">
-        <button id="sol" onClick={ilerle}>
-          SOL
+        <button id="left" onClick={ilerle}>
+          LEFT
         </button>
-        <button id="yukarı" onClick={ilerle}>
-          YUKARI
+        <button id="up" onClick={ilerle}>
+          UP
         </button>
-        <button id="sağ" onClick={ilerle}>
-          SAĞ
+        <button id="right" onClick={ilerle}>
+          RIGHT
         </button>
-        <button id="aşağı" onClick={ilerle}>
-          AŞAĞI
+        <button id="down" onClick={ilerle}>
+          DOWN
         </button>
         <button id="reset" onClick={reset}>
-          reset
+          RESET
         </button>
       </div>
       <form onSubmit={onSubmit}>
