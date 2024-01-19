@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from "axios";
 
 
 const initialMessage = '';
@@ -6,7 +7,6 @@ const initialEmail = '';
 const initialSteps = 0;
 const initialIndex = 4; 
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AppFunctional(props) {
   const [message, setMessage] = useState(initialMessage);
@@ -15,14 +15,12 @@ export default function AppFunctional(props) {
   const [index, setIndex] = useState(initialIndex);
 
   function getXY() {
-    const x = index % 3 + 1;
-    const y = Math.floor(index / 3) + 1;
-    return { x, y };
+    const coordinates = [(index % 3) + 1, Math.floor(index / 3) + 1];
+    return coordinates;
   }
 
   function getXYMesaj() {
-    const { x, y } = getXY();
-    return `Koordinatlar (${x}, ${y})`;
+    return `Koordinatlar (${getXY()[0]}, ${getXY()[1]})`;
   }
 
   function reset() {
@@ -32,104 +30,76 @@ export default function AppFunctional(props) {
     setIndex(initialIndex);
   }
 
-  function sonrakiIndex(yon) {
-    let newIndex;
-  
-    if (yon === 'left') {
-      newIndex = index % 3 === 0 ? index : index - 1;
-      if (index === newIndex) {
-        setMessage("You can't go left.");
-        return index; 
-      }
-    } else if (yon === 'up') {
-      newIndex = index - 3 < 0 ? index : index - 3;
-      if (index === newIndex) {
-        setMessage("You can't go up.");
-        return index; 
-      }
-    } else if (yon === 'right') {
-      newIndex = index % 3 === 2 ? index : index + 1;
-      if (index === newIndex) {
-        setMessage("You can't go right.");
-        return index; 
-      }
-    } else if (yon === 'down') {
-      newIndex = index + 3 > 8 ? index : index + 3;
-      if (index === newIndex) {
-        setMessage("You can't go down.");
-        return index; 
-      }
-    } else {
-      newIndex = index;
+  function ilerle(evt) {
+    const yon = evt.target.id;
+    console.log("ilerle", yon);
+    // Bu event handler, "B" için yeni bir dizin elde etmek üzere yukarıdaki yardımcıyı kullanabilir,
+    switch (yon) {
+      case "left":
+        if (index % 3 === 0) {
+          setMessage("You can't go left.");
+        } else {
+          sonrakiIndex(index - 1);
+        }
+        break;
+      case "up":
+        if (index < 3) {
+          setMessage("You can't go up.");
+        } else {
+          sonrakiIndex(index - 3);
+        }
+        break;
+      case "right":
+        if (index % 3 === 2) {
+          setMessage("You can't go right.");
+        } else {
+          sonrakiIndex(index + 1);
+        }
+        break;
+      case "down":
+        if (index > 5) {
+          setMessage("You can't go down.");
+        } else {
+          sonrakiIndex(index + 3);
+        }
+        break;
+      default:
+        break;
     }
-  
-    return newIndex;
   }
-
-  function isValidCoordinate(coord) {
-    return coord >= 1 && coord <= 3;
-  }
-
-  function isValidSteps(steps) {
-    return steps >= 0;
+  function sonrakiIndex(targetIndex) {
+    setIndex(targetIndex);
+    setSteps(steps + 1);
+    setMessage(initialMessage);
   }
 
   function onChange(evt) {
     setEmail(evt.target.value);
   }
 
-  async function onSubmit(evt) {
+
+  function onSubmit(evt) {
     evt.preventDefault();
 
-    if (!email || !emailRegex.test(email)) {
-      setMessage('Geçerli bir e-posta girin.');
-      return;
-    }
 
-    if (
-      !isValidCoordinate(index % 3 + 1) ||
-      !isValidCoordinate(Math.floor(index / 3) + 1) ||
-      !isValidSteps(steps)
-    ) {
-      setMessage('Geçerli bilgileri girin.');
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:9000/api/result', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          x: index % 3 + 1,
-          y: Math.floor(index / 3) + 1,
-          steps,
-          email,
-        }),
+    axios
+      .post("http://localhost:9000/api/result", {
+        x: getXY()[0],
+        y: getXY()[1],
+        steps: steps,
+        email: email,
+      })
+      .then(function (response) {
+        console.log(response);
+        setMessage(response.data.message);
+      })
+      .catch(function (error) {
+        console.log(error);
+        setMessage(error.response.data.message);
       });
 
-      if (!response.ok) {
-        throw new Error('Sunucu hatası: ' + response.status);
-      }
-
-      const result = await response.json();
-      setMessage('Form başarıyla gönderildi.');
-    } catch (error) {
-      setMessage('Form gönderilirken bir hata oluştu.');
-    }
-  }
-
-  function ilerle(evt) {
-    const newDirection = evt.target.id;
-    const newIndex = sonrakiIndex(newDirection);
-  
-    if (index !== newIndex) {
-      setIndex((prevIndex) => newIndex);
-      setSteps((prevSteps) => prevSteps + 1);
-      setMessage('');
-    }
-  }
+    setEmail(initialEmail);
+    };
 
   return (
     <div id="wrapper" className={props.className}>
@@ -138,7 +108,7 @@ export default function AppFunctional(props) {
         <h3 id="steps">{`${steps} kere ilerlediniz`}</h3>
       </div>
       <div id="grid">
-        {Array.from({ length: 9 }, (_, idx) => (
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((idx) => (
           <div key={idx} className={`square${idx === index ? ' active' : ''}`}>
             {idx === index ? 'B' : null}
           </div>
@@ -170,4 +140,4 @@ export default function AppFunctional(props) {
       </form>
     </div>
   );
-}
+      };
